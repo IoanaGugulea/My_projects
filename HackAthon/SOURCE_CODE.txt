@@ -1,0 +1,214 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+#include <queue>
+#include <climits>
+
+using namespace std;
+
+class Point {
+public:
+    int x, y;
+};
+
+class GoldenPoint : public Point {
+};
+
+class SilverPoint : public Point {
+public:
+    int score;
+};
+
+class Tile {
+public:
+    char tid;
+    int cost;
+    int quantity;
+    int directions[4][2]; // maximum possible directions
+};
+
+bool isWithinBounds(int x, int y, int W, int H) {
+    return x >= 0 && x < W && y >= 0 && y < H;
+}
+
+void initializeTileDirections(Tile& tile) {
+    switch (tile.tid) {
+        case '3':
+            tile.directions[0][0] = 0; tile.directions[0][1] = 1; // right
+            break;
+        case '5':
+            tile.directions[0][0] = 1; tile.directions[0][1] = 0; // down
+            tile.directions[1][0] = 0; tile.directions[1][1] = 1; // right
+            break;
+        case '6':
+            tile.directions[0][0] = 0; tile.directions[0][1] = -1; // left
+            tile.directions[1][0] = 1; tile.directions[1][1] = 0; // down
+            break;
+        case '7':
+            tile.directions[0][0] = 0; tile.directions[0][1] = 1; // right
+            tile.directions[1][0] = 0; tile.directions[1][1] = -1; // left
+            tile.directions[2][0] = 1; tile.directions[2][1] = 0; // down
+            break;
+        case '9':
+            tile.directions[0][0] = -1; tile.directions[0][1] = 0; // up
+            tile.directions[1][0] = 1; tile.directions[1][1] = 0; // down
+            break;
+        case 'A':
+            tile.directions[0][0] = 0; tile.directions[0][1] = -1; // left
+            tile.directions[1][0] = -1; tile.directions[1][1] = 0; // up
+            break;
+        case 'B':
+            tile.directions[0][0] = 0; tile.directions[0][1] = 1; // right
+            tile.directions[1][0] = 0; tile.directions[1][1] = -1; // left
+            tile.directions[2][0] = -1; tile.directions[2][1] = 0; // up
+            break;
+        case 'C':
+            tile.directions[0][0] = -1; tile.directions[0][1] = 0; // up
+            tile.directions[1][0] = 1; tile.directions[1][1] = 0; // down
+            break;
+        case 'D':
+            tile.directions[0][0] = -1; tile.directions[0][1] = 0; // up
+            tile.directions[1][0] = 0; tile.directions[1][1] = 1; // right
+            tile.directions[2][0] = 1; tile.directions[2][1] = 0; // down
+            break;
+        case 'E':
+            tile.directions[0][0] = 0; tile.directions[0][1] = -1; // left
+            tile.directions[1][0] = 0; tile.directions[1][1] = 1; // right
+            tile.directions[2][0] = -1; tile.directions[2][1] = 0; // up
+            tile.directions[3][0] = 1; tile.directions[3][1] = 0; // down
+            break;
+        case 'F':
+            tile.directions[0][0] = 0; tile.directions[0][1] = -1; // left
+            tile.directions[1][0] = 0; tile.directions[1][1] = 1; // right
+            tile.directions[2][0] = -1; tile.directions[2][1] = 0; // up
+            tile.directions[3][0] = 1; tile.directions[3][1] = 0; // down
+            break;
+    }
+}
+
+int findRoute(const Point& start, const Point& end, int W, int H, char** grid, Point* goldenPoints, int GN, Point* silverPoints, int SM, Tile* tiles, int TL) {
+    // priority queue to store the cells to be visited
+    priority_queue<pair<int, pair<int, int>>, vector<pair<int, pair<int, int>>>, greater<pair<int, pair<int, int>>>> pq;
+    
+    // 2D array to store the distances from start cell
+    int dist[W][H];
+    for (int i = 0; i < W; ++i) {
+        for (int j = 0; j < H; ++j) {
+            dist[i][j] = INT_MAX;
+        }
+    }
+
+    // Push the start cell into the priority queue
+    pq.push({0, {start.x, start.y}});
+    dist[start.x][start.y] = 0;
+
+    // Dijkstra's algorithm
+    while (!pq.empty()) {
+        int x = pq.top().second.first;
+        int y = pq.top().second.second;
+        int cost = pq.top().first;
+        pq.pop();
+
+        // If the current cell is the end cell return the distance
+        if (x == end.x && y == end.y) {
+            return dist[x][y];
+        }
+
+        // Explore adjacent cells
+        for (int k = 0; k < 4; ++k) {
+            int nx = x + tiles[k].directions[k][0];
+            int ny = y + tiles[k].directions[k][1];
+            if (isWithinBounds(nx, ny, W, H) && grid[nx][ny] != 'X') {
+                int newCost = cost + tiles[k].cost;
+                if (newCost < dist[nx][ny]) {
+                    dist[nx][ny] = newCost;
+                    pq.push({newCost, {nx, ny}});
+                }
+            }
+        }
+    }
+
+    // If the end cell is unreachable, return -1
+    return -1;
+}
+
+void read_matrix(const string& file_name, int& W, int& H, int& GN, int& SM, int& TL, 
+                 GoldenPoint* golden_points, SilverPoint* silver_points, Tile* tiles) {
+    ifstream file(file_name);
+    file >> W >> H >> GN >> SM >> TL;
+
+    for (int i = 0; i < GN; ++i) {
+        file >> golden_points[i].x >> golden_points[i].y;
+    }
+
+    for (int i = 0; i < SM; ++i) {
+        file >> silver_points[i].x >> silver_points[i].y >> silver_points[i].score;
+    }
+
+    for (int i = 0; i < TL; ++i) {
+        file >> tiles[i].tid >> tiles[i].cost >> tiles[i].quantity;
+    }
+
+    file.close();
+}
+
+void outputGrid(const string& file_name, int W, int H, GoldenPoint* golden_points, int GN, SilverPoint* silver_points, int SM, Tile* tiles, int TL) {
+    ofstream output_file(file_name);
+
+    // Output tiles
+    for (int i = 0; i < TL; ++i) {
+        int x = tiles[i].directions[0][0];
+        int y = tiles[i].directions[0][1];
+        output_file << tiles[i].tid << " " << x << " " << y << endl;
+    }
+
+    output_file.close();
+}
+
+int main() 
+{
+    int W, H, GN, SM, TL;
+    string file_name = "05-horror.txt";
+    ifstream count_file(file_name);
+    count_file >> W >> H >> GN >> SM >> TL;
+    count_file.close();
+
+    GoldenPoint* golden_points = new GoldenPoint[GN];
+    SilverPoint* silver_points = new SilverPoint[SM];
+    Tile* tiles = new Tile[TL];
+
+    read_matrix(file_name, W, H, GN, SM, TL, golden_points, silver_points, tiles);
+
+    // Initialize grid
+    char** grid = new char*[W];
+    for (int i = 0; i < W; ++i) {
+        grid[i] = new char[H];
+        for (int j = 0; j < H; ++j) {
+            grid[i][j] = '.';
+        }
+    }
+
+    // Place Golden Points on the grid
+    for (int i = 0; i < GN; ++i) {
+        grid[golden_points[i].x][golden_points[i].y] = 'G';
+    }
+
+    // Place Silver Points on the grid
+    for (int i = 0; i < SM; ++i) {
+        grid[silver_points[i].x][silver_points[i].y] = 'S';
+    }
+
+    // Output grid and tiles to file
+    outputGrid("05-horror-output.txt", W, H, golden_points, GN, silver_points, SM, tiles, TL);
+
+    // Cleanup
+    for (int i = 0; i < W; ++i) {
+        delete[] grid[i];
+    }
+    delete[] grid;
+    delete[] golden_points;
+    delete[] silver_points;
+    delete[] tiles;
+
+    return 0;
+}

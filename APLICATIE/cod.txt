@@ -1,0 +1,309 @@
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <stdexcept>
+
+using namespace std;
+
+// Simplified RSA key structure
+struct RSAKey {
+    int publicKey;
+    int privateKey;
+    int n;
+};
+
+// Function to check if a number is prime
+bool isPrime(int num) {
+    if (num <= 1) return false;
+    for (int i = 2; i * i <= num; ++i) {
+        if (num % i == 0) return false;
+    }
+    return true;
+}
+
+// Function to find the greatest common divisor
+int gcd(int a, int b) {
+    if (b == 0) return a;
+    return gcd(b, a % b);
+}
+
+// Function to find a coprime number
+int findCoprime(int phi) {
+    for (int e = 2; e < phi; ++e) {
+        if (gcd(e, phi) == 1) {
+            return e;
+        }
+    }
+    return -1; // Should never reach here in a real-world scenario
+}
+
+// Function to calculate modular exponentiation (a^b % mod)
+int modExp(int base, int exponent, int mod) {
+    int result = 1;
+    base = base % mod;
+
+    while (exponent > 0) {
+        if (exponent % 2 == 1) {
+            result = (result * base) % mod;
+        }
+
+        exponent = exponent >> 1; // Equivalent to exponent /= 2
+        base = (base * base) % mod;
+    }
+
+    return result;
+}
+
+// Function to generate RSA key pair
+RSAKey generateRSAKeyPair() {
+    RSAKey keys;
+
+    // Choose two prime numbers (p and q)
+    int p = 17;
+    int q = 19;
+
+    // Calculate n = p * q
+    keys.n = p * q;
+
+    // Calculate Euler's totient function (phi)
+    int phi = (p - 1) * (q - 1);
+
+    // Choose a public key (e) that is coprime with phi
+    keys.publicKey = findCoprime(phi);
+
+    // Calculate the private key (d) such that (e * d) % phi = 1
+    keys.privateKey = 0;
+    while ((keys.publicKey * keys.privateKey) % phi != 1) {
+        ++keys.privateKey;
+    }
+
+    return keys;
+}
+
+// Function to encrypt the password using RSA
+string encryptPassword(const string& password, const RSAKey& publicKey) {
+    string encryptedPassword = "";
+
+    for (char ch : password) {
+        int encryptedChar = modExp(ch, publicKey.publicKey, publicKey.n);
+        encryptedPassword += to_string(encryptedChar) + " ";
+    }
+
+    return encryptedPassword;
+}
+
+// Function to decrypt the password using RSA
+string decryptPassword(const string& encryptedPassword, const RSAKey& privateKey) {
+    string decryptedPassword = "";
+    size_t pos = 0;
+
+    while ((pos = encryptedPassword.find(' ')) != string::npos) {
+        string token = encryptedPassword.substr(0, pos);
+        encryptedPassword.erase(0, pos + 1);
+
+        int encryptedChar = stoi(token);
+        int decryptedChar = modExp(encryptedChar, privateKey.privateKey, privateKey.n);
+        decryptedPassword += static_cast<char>(decryptedChar);
+    }
+
+    return decryptedPassword;
+}
+
+
+bool isTripAvailable(const string &date, const string &city) {
+    ifstream inFile("trips.csv");
+    string tripDate, tripCity;
+
+    while (getline(inFile, tripDate, ',')) {
+        getline(inFile, tripCity);
+
+        if (tripDate == date && tripCity == city) {
+            inFile.close();
+            return true;
+        }
+    }
+
+    inFile.close();
+    return false;
+}
+
+class Operator {
+public:
+    bool login(const string& username, const string& password, const RSAKey& publicKey) 
+    {
+        string storedUsername = "operator";
+        string storedPassword = encryptPassword("operator_password", publicKey);
+
+        if (username != storedUsername || password != storedPassword) {
+            throw runtime_error("Invalid operator credentials");
+        }
+
+        return true;
+    }
+
+    void addTrip(const string& date, const string& city) {
+        // Check date format and date validity
+        if (!isValidDateFormat(date) || !isValidDate(date) || !isValidCity(city)) {
+            throw invalid_argument("Invalid trip details");
+        }
+
+        // Add trip to the "database" (not implemented in this example)
+        ofstream outFile("trips.csv", ios::app);
+        outFile << date << "," << city << endl;
+        outFile.close();
+
+        cout << "Trip added successfully: Date " << date << ", City " << city << endl;
+    }
+
+    void removeTrip(const string& date, const string& city) {
+        // Check date format and date validity
+        if (!isValidDateFormat(date) || !isValidDate(date) || !isValidCity(city)) {
+            throw invalid_argument("Invalid trip details");
+        }
+
+        // Check if the trip exists (not implemented in this example)
+        if (!isTripExists(date, city)) {
+            throw runtime_error("Trip does not exist");
+        }
+
+        // Remove trip from the "database" (not implemented in this example)
+        removeTripFromDatabase(date, city);
+
+        cout << "Trip removed successfully: Date " << date << ", City " << city << endl;
+    }
+
+private:
+
+     bool isValidDateFormat(const string& date) {
+        // Implement date format validation logic (simplified for illustration)
+        // Check if the date has the format "YYYY-MM-DD"
+        // You may use regex or other methods for date format validation
+        return date.length() == 10 && date[4] == '-' && date[7] == '-';
+    }
+
+    bool isValidDate(const string& date) {
+        // Implement date validation logic (simplified for illustration)
+        // Check if the date is in the future
+        // You may use regex or other methods for date validation
+        return true;
+    }
+    
+    bool isFutureDate(const string& date) {
+        // Implement date validation logic (simplified for illustration)
+        // Check if the date is in the future
+        // You may use regex or other methods for date validation
+        return true;
+    }
+
+    bool isValidCity(const string& city) {
+        // Implement city validation logic (simplified for illustration)
+        // Check if the city name is valid
+        // You may use regex or other methods for city validation
+        return true;
+    }
+};
+
+class User {
+public:
+    bool registerUser(const string& username, const string& email, const string& password, const RSAKey& publicKey) {
+        // Implement user registration logic (simplified for illustration)
+        // Check email format, password strength, etc.
+        if (!isValidEmail(email) || password.length() < 8 || !isValidPassword(password)) {
+            throw invalid_argument("Invalid user registration details");
+        }
+
+        // Add user to the database (not implemented in this example)
+        ofstream outFile("users.csv", ios::app);
+        outFile << username << "," << email << "," << encryptPassword(password, publicKey) << endl;
+        outFile.close();
+
+        return true;
+    }
+
+     bool login(const string& email, const string& password, const RSAKey& publicKey) {
+        // Simulated retrieval of stored data from the "database"
+        string storedEmail = "user1@example.com";
+        string storedEncryptedPassword = "encrypted_user_password";
+
+        // Simulate decryption of stored hashed password
+        string storedPassword = decryptPassword(storedEncryptedPassword, publicKey);
+
+        // Compare email and hashed password with stored data
+        if (email != storedEmail || password != storedPassword) {
+            throw runtime_error("Invalid user credentials");
+        }
+
+        return true;
+    }
+
+    void searchTrip(const string &date, const string &city) {
+        // Implement search trip logic
+        if (isTripAvailable(date, city)) {
+            cout << "Trip found: Date " << date << ", City " << city << endl;
+        } else {
+            cout << "Trip not found.\n";
+        }
+    }
+
+    void bookTrip(const string &date, const string &city) {
+        // Implement book trip logic
+        if (isTripAvailable(date, city)) {
+            cout << "Trip booked: Date " << date << ", City " << city << endl;
+
+            // Add booking information to the database (not implemented in this example)
+            ofstream outFile("bookings.csv", ios::app);
+            outFile << date << "," << city << "," << "user1@example.com" << endl;
+            outFile.close();
+        } else {
+            cout << "Cannot book the trip. Trip not found.\n";
+        }
+    }
+
+private:
+    bool isValidEmail(const string& email) {
+        // Implement email validation logic (simplified for illustration)
+        // You may use regex or other methods for email validation
+        return true;
+    }
+
+    bool isValidPassword(const string& password) {
+        // Implement password validation logic (simplified for illustration)
+        // Check password strength
+        return true;
+    }
+};
+
+int main() 
+{
+    Operator operator1;
+    User user1;
+
+    // Generate RSA key pair
+    RSAKey rsaKeyPair = generateRSAKeyPair();
+
+    try {
+        // Operator activities
+        if (operator1.login("operator", "operator_password", rsaKeyPair)) {
+            operator1.addTrip("2023-12-01", "CityA");
+            operator1.removeTrip("2023-12-02", "CityB");
+        } else {
+            cout << "Operator login failed.\n";
+        }
+
+        // User activities
+        if (user1.registerUser("user1", "user1@example.com", "strongPassword", rsaKeyPair)) {
+            if (user1.login("user1@example.com", "strongPassword", rsaKeyPair)) {
+                user1.searchTrip("2023-12-01", "CityA");
+                user1.bookTrip("2023-12-01", "CityA");
+            } else {
+                cout << "User login failed.\n";
+            }
+        } else {
+            cout << "User registration failed.\n";
+        }
+    } catch (const exception& e) {
+        cerr << "Exception caught: " << e.what() << endl;
+    }
+
+    return 0;
+}
